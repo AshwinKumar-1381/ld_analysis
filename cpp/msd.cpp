@@ -7,10 +7,11 @@
  t_start    - time to start with
  t_end      - time to end 
  frame_w    - time interval corresponding to each frame
+ ------------------------
  
  Author        : Ashwin Kumar M
- Date created  : 10.10.24
- Last modified : 10.10.24
+ Date created  : 11.10.24
+ Last modified : 11.10.24
 */
 
 #include<iostream>
@@ -23,146 +24,140 @@
 
 using namespace std;
 
-int main(int argc, char *argv[])
+struct atomCoords{
+    float rx_t0 = 0.0, ry_t0 = 0.0;
+    float rx_t1 = 0.0, ry_t1 = 0.0;
+    float rx_t2 = 0.0, ry_t2 = 0.0;
+    int jump_x = 0, jump_y = 0;
+    void unwrap_pbc(int boxLength);  
+};
+
+void atomCoords::unwrap_pbc(int boxLength)
 {
-    int nr = atoi(argv[1]);
-    int t_start = atoi(argv[2]);
-    int t_end = atoi(argv[3]);
-    float frame_w = atof(argv[4]);
-    
-    int L, N, tmp;
-    int frame_start = int(t_start/frame_w + 0.1);
-    int frame_end = int(t_end/frame_w + 0.1);
-    
-    FILE *file_log, *file_traj, *file_msd;
-    char* pipeChar = (char*) malloc (500*sizeof(char));
-    char* pipeString = (char*) malloc (500*sizeof(char));
-    char* fname = (char*) malloc (500*sizeof(char));
-    char* cwd = (char*) malloc (500*sizeof(char));
-    
-    float* rx_t0 = (float*) malloc(N*sizeof(float));
-    float* ry_t0 = (float*) malloc(N*sizeof(float)); 
-    float* rx_t1 = (float*) malloc(N*sizeof(float));
-    float* ry_t1 = (float*) malloc(N*sizeof(float)); 
-    float* rx_t2 = (float*) malloc(N*sizeof(float));
-    float* ry_t2 = (float*) malloc(N*sizeof(float));
-    int* jump_index_x = (int*) malloc(N*sizeof(int));
-    int* jump_index_y = (int*) malloc(N*sizeof(int));
-    float* msd = (float*) malloc((frame_end - frame_start + 1)*sizeof(float));
-    
-    for(int i = 0; i < N; i++)
+    if(rx_t2 - rx_t1 <= -0.5*boxLength) jump_x += 1;
+    else if(rx_t2 - rx_t1 >= 0.5*boxLength) jump_x -= 1;
+    if(ry_t2 - ry_t1 <= -0.5*boxLength) jump_y += 1;
+    else if(ry_t2 - ry_t1 >= 0.5*boxLength) jump_y -= 1;
+}
+
+struct log_param{
+    int val;
+    char name[10];
+    void read_log(FILE *file);
+};
+
+void log_param::read_log(FILE *file)
+{
+    char *pipeString = (char*) malloc(500*sizeof(char));
+    char *pipeChar = (char*) malloc(500*sizeof(char));
+    int tmp;
+          
+    rewind(file);
+    while(!feof(file))
     {
-        jump_index_x[i] = 0;
-        jump_index_y[i] = 0;
-    }
-    
-    // Set the current working directory to Data folder
-    string str(filesystem::current_path());
-    str.erase(str.begin() + str.find("/code"), str.end());
-    strcpy(cwd, str.c_str()); 
-    sprintf(cwd, "%s/LD/Data%d", str.c_str(), nr);
-    
-    // Opening log file to read parameters
-    sprintf(fname, "%s/log.dat", cwd);
-    file_log = fopen(fname, "r");
-    if(file_log == NULL)
-    {
-        printf("Could not open log file.\n");
-        exit(-1);
-    }
-    
-    while(!feof(file_log))
-    {
-        fgets(pipeString, 500, file_log);
+        fgets(pipeString, 500, file);
         sscanf(pipeString, "%s %d", pipeChar, &tmp);
-        if(strcmp(pipeChar,"L") == 0) L = tmp;
-        if(strcmp(pipeChar,"N") == 0) N = tmp;
+        if(strcmp(pipeChar, name) == 0) val = tmp;
     }
-    fclose(file_log);
+    delete(pipeString, pipeChar);
+}
+
+void computeMeanSquaredDisplacement(float *meanSquaredDisplacement, FILE *file, int frame_start, int nFrames, int nAtoms, int boxLength)
+{
+    for(int i = 0; i < nFrames; i++) meanSquaredDisplacement[i] = 0.0;
     
-    // read trajectory file
-    sprintf(fname, "%s/relaxa_eq/traj_eq_%d.xyz", cwd, nr);
-    file_traj = fopen(fname, "r");
-    if(file_traj == NULL)
+    atomCoords *atoms = (atomCoords*) malloc(nAtoms*sizeof(atomCoords));
+    char* pipeString = (char*) malloc(500*sizeof(char));
+    int frame_nr = 0;
+    
+    rewind(file);
+    while(!feof(file))
     {
-        printf("Cannot open trajectory file.\n");
-        exit(-1);
-    }
-    
-    int frame_nr = -1;
-    for(int i = 0; i <= frame_end - frame_start; i++) msd[i] = 0.0;
-    printf("%d %d %d\n", frame_start, frame_end, frame_end - frame_start);
-    
-    
-    while(!feof(file_traj))
-    {
-        fgets(pipeString, 500, file_traj);
-        fgets(pipeString, 500, file_traj);
-        frame_nr++;
+        fgets(pipeString, 500, file);
+        fgets(pipeString, 500, file);
+        frame_nr += 1;
         
-        printf("%f\n", msd[int(frame_nr - frame_start)]);
-        // storing particle coordinates of reference frame
-        if(frame_nr == frame_start)
+        if(frame_nr < frame_start + 1)
         {
-            for(int i = 0; i < N; i++)
-            {
-                fgets(pipeString, 500, file_traj);
-                sscanf(pipeString, "%*c %f %f %*f", &rx_t0[i], &ry_t0[i]);
-                rx_t1[i] = rx_t0[i];
-                ry_t1[i] = ry_t0[i];
-            }            
+            for(int i = 0; i < nAtoms; i++) fgets(pipeString, 500, file);
         }
         
-        else if(frame_nr > frame_start and frame_nr <= frame_end)
+        if(frame_nr == frame_start + 1)
         {
-            for(int i = 0; i < N; i++)
+            for(int i = 0; i < nAtoms; i++)
             {
-                fgets(pipeString, 500, file_traj);
-                sscanf(pipeString, "%*c %f %f %*f", &rx_t2[i], &ry_t2[i]);
+                fgets(pipeString, 500, file);
+                sscanf(pipeString, "%*c %f %f %*f", &atoms[i].rx_t0, &atoms[i].ry_t0);
+                atoms[i].rx_t1 = atoms[i].rx_t0;
+                atoms[i].ry_t1 = atoms[i].ry_t0;
             }
-            
-            // calculate MSD
-            for (int i = 0; i < N; i++) 
-            {
-                float dx = rx_t2[i] - rx_t1[i];
-                float dy = ry_t2[i] - ry_t1[i];
-                
-                // Un-wrapping PBCs
-                if(dx <= -0.5*L) jump_index_x[i] += 1;
-                else if(dx >= 0.5*L) jump_index_x[i] -= 1;
-                dx = (rx_t2[i] + L*jump_index_x[i]) - rx_t0[i];
-                
-                if(dy <= -0.5*L) jump_index_y[i] += 1;
-                else if(dy >= 0.5*L) jump_index_y[i] -= 1;
-                dy = (ry_t2[i] + L*jump_index_y[i]) - ry_t0[i];
-                
-                msd[frame_nr - frame_start] += dx*dx + dy*dy;
-                rx_t1[i] = rx_t2[i];
-                ry_t1[i] = ry_t2[i];
-            }
-            
-            msd[frame_nr - frame_start] /= N;
         }
         
-        else
+        if(frame_nr > frame_start + 1 and frame_nr <= frame_start + nFrames)
         {
-            for(int i = 0; i < N; i++) fgets(pipeString, 500, file_traj);
+            for(int i = 0; i < nAtoms; i++)
+            {
+                fgets(pipeString, 500, file);
+                sscanf(pipeString, "%*c %f %f %*f", &atoms[i].rx_t2, &atoms[i].ry_t2);
+                atoms[i].unwrap_pbc(boxLength);
+                
+                float dx = (atoms[i].rx_t2 + boxLength*atoms[i].jump_x) - atoms[i].rx_t0;
+                float dy = (atoms[i].ry_t2 + boxLength*atoms[i].jump_y) - atoms[i].ry_t0;
+                
+                meanSquaredDisplacement[frame_nr - (frame_start+1)] += dx*dx + dy*dy;
+                
+                atoms[i].rx_t1 = atoms[i].rx_t2;
+                atoms[i].ry_t1 = atoms[i].ry_t2;
+            }
+            meanSquaredDisplacement[frame_nr - (frame_start+1)] /= nAtoms;
         }
     }
+    delete(pipeString, atoms);
+}
+
+int main(int argc, char* argv[])
+{   
+    int nr = atoi(argv[1]);
+    float t_start = atof(argv[2]);
+    float t_end = atof(argv[3]);
+    float frame_w = atof(argv[4]);
+    char* type = argv[5];
     
+    char* cwd = (char*) malloc(500*sizeof(char));
+    string str(filesystem::current_path());
+    str.erase(str.begin() + str.find("/ld_analysis/cpp"), str.end());
+    sprintf(cwd, "%s/LD/Data1", str.c_str());
     
+    log_param nAtoms = {0, 'N'}, boxL = {0, 'L'};
     
-    // Remove msd file if it already exists
-    sprintf(fname, "%s/relaxa_eq/msd%d.dat", cwd, nr);
+    char* fname = (char*) malloc(500*sizeof(char));
+    sprintf(fname, "%s/log.dat", cwd);
+    FILE *file = fopen(fname, "r");
+    if(file == NULL){ printf("Can not open log file. Exiting ...\n"); exit(-1);}
+    else printf("Opening Log file to read params L and N...\n");
+    
+    nAtoms.read_log(file); 
+    boxL.read_log(file);
+    fclose(file);
+    
+    int N_frames = int((t_end - t_start)/frame_w) + 1;
+    float* meanSquaredDisplacement = (float*) malloc(N_frames*sizeof(float));
+    
+    sprintf(fname, "%s/relaxa_%s/traj_%s_%d.xyz", cwd, type, type, nr);
+    file = fopen(fname, "r");
+    if(file == NULL) {printf("Can not open trajectory file. Exiting ...\n"); exit(-1);}
+    else printf("Opening trajectory file to read atomic coordinates...\n");
+    
+    computeMeanSquaredDisplacement(meanSquaredDisplacement, file, int(t_start/frame_w+0.1), N_frames, nAtoms.val, boxL.val);
+    fclose(file);
+ 
+    sprintf(fname, "%s/relaxa_%s/msd%d.dat", cwd, type, nr);
     remove(fname);
+    file = fopen(fname, "a+");
+    if(file == NULL) {printf("Could not create msd dat file. Exiting...\n"); exit(-1);}
+    else printf("Writing to msd%d.dat file...\n", nr); 
+    for(int i = 0; i < N_frames; i++) fprintf(file, "%d %f\n", i, meanSquaredDisplacement[i]);
+    fclose(file);
     
-    file_msd = fopen(fname, "a+");
-    if(file_msd == NULL)
-    {
-        printf("Cannot create MSD file.\n");
-        exit(-1);
-    }
-    fprintf(file_msd, "frame_nr msd\n");
-    for(int i = 0; i <= frame_end - frame_start; i++) fprintf(file_msd, "%d %f\n", i + 1, msd[i]);
-    fclose(file_msd);
+    return 0;
 }
