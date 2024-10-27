@@ -15,7 +15,7 @@ import numpy as np
 
 mpl.pyplot.rc('text', usetex=True)
 
-nr_list = [16]
+nr_list = [8]
 markers = ["o", '^', "s", "*"]
 line_style = ["-", "-", "-", "-", "--"]
 

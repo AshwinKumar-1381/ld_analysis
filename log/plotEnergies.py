@@ -44,11 +44,11 @@ def readData(fpath):
     fobj.close()
     return(Cols)
 
-nr = [11]
-dt = 5e-5
+nr = [1]
+dt = 0.5e-4
 type1 = 'lmp'
 type2 = 'ss'
-plotInterval = 10
+plotInterval = 1
 
 fig, ax = mpl.pyplot.subplots()
 
@@ -87,12 +87,11 @@ for j in range(len(nr)):
     elif(type1 == 'lmp'):
         N = readLogParam('N', logPath)
         thermoPath = makeFilePath(nr[j], type1, type2, ['thermo'])
-        [t, T, pe] = readData(thermoPath)
+        [t, T, pe, msd] = readData(thermoPath)
         
         lent = len(t)
         for i in range(lent): 
             t[i] *= dt
-            pe[i] *= N
         
         ax.plot(t[0 : lent - 1 : plotInterval], pe[0 : lent - 1 : plotInterval],
                 lw = 0.8, label = "total PE")

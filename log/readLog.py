@@ -7,7 +7,7 @@ Last modified   : 16.10.24
 
 -------- INPUTS -------
 argv[1] = nr    (file no.)
-argv[2] = nRuns (no. of run sets present in log.lammps)
+argv[2] = nRuns (number of the run set whose data need to be collected)
 -----------------------
 """
 
@@ -38,6 +38,9 @@ fobj1 = open(fname1, mode = "r", encoding = "utf-8")
 
 fname2 = fname1.removesuffix("/log.lammps") + "/thermo.dat"
 fobj2 = open(fname2, mode = "w")
+
+print(fname1, '\n')
+print(fname2, '\n')
 
 run_nr = 0
 for line in fobj1:
