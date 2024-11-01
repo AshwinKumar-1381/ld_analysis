@@ -144,11 +144,11 @@ void extractTraj(int nr, char *type1, char *type2, int frameStart, int frameEnd,
             for(int i = 0; i < vars[1] + 2; i++) fgets(pipeString, 500, trajFileOld);
         }
     }
+    fclose(trajFileNew);
+    fclose(trajFileOld);
     
     vars = countFrames(nr, type1, type2, traj.c_str());
     printf("Number of frames in modified trajectory = %d\n", vars[0]);
-    fclose(trajFileNew);
-    fclose(trajFileOld);
 }
 
 int main(int argc, char* argv[])
@@ -160,8 +160,8 @@ int main(int argc, char* argv[])
     
     if(option == 'A')
     {
-        string traj("traj");
-        int *vars = fileUtils::countFrames(nr, type1, type2, traj.c_str());
+        char *extras = argv[5];
+        int *vars = fileUtils::countFrames(nr, type1, type2, extras);
         printf("The requested trajectory file has %d frames.\n", vars[0]);
     }
     else if(option == 'B')
