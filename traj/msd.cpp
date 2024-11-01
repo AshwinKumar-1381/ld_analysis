@@ -16,6 +16,7 @@
  Last modified : 26.10.24
 */
 
+#include "library.h"
 #include "file_utils.h"
 
 using namespace std;
@@ -101,15 +102,15 @@ int main(int argc, char* argv[]){
     int N_frames = int((t_end - t_start)/frame_w) + 1;
     
     string log("log"), traj("traj"), msd("msd");
-    char *logFile = makeFilePath(nr, type1, type2, log);
-    char *trajFile = makeFilePath(nr, type1, type2, traj);
-    char *msdFile = makeFilePath(nr, type1, type2, msd);
+    char *logFile = fileUtils::makeFilePath(nr, type1, type2, log.c_str());
+    char *trajFile = fileUtils::makeFilePath(nr, type1, type2, traj.c_str());
+    char *msdFile = fileUtils::makeFilePath(nr, type1, type2, msd.c_str());
     
     file = fopen(logFile, "r");
     if(file == NULL){ printf("Can not open log file. Exiting ...\n"); exit(-1);}
     else printf("Opening Log file to read params L and N...\n");
     
-    log_param nAtoms = {0, 'N'}, boxL = {0, 'L'};
+    fileUtils::log_param nAtoms = {0, 'N'}, boxL = {0, 'L'};
     nAtoms.read_log(file); 
     boxL.read_log(file);
     fclose(file);
