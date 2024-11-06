@@ -4,16 +4,16 @@
 
  ------- Inputs ---------
  nr         - file number
+ type1      - lmp/cpp
+ type2      - eq/ss
  t_start    - time to start with
  t_end      - time to end 
  frame_w    - time interval corresponding to each frame
- type1      - lmp/cpp
- type2      - eq/ss
  ------------------------
  
  Author        : Ashwin Kumar M
  Date created  : 11.10.24
- Last modified : 26.10.24
+ Last modified : 01.11.24
 */
 
 #include "library.h"
@@ -92,11 +92,11 @@ void computeMeanSquaredDisplacement(float *meanSquaredDisplacement, FILE *file, 
 int main(int argc, char* argv[]){
    
     int nr = atoi(argv[1]);
-    float t_start = atof(argv[2]);
-    float t_end = atof(argv[3]);
-    float frame_w = atof(argv[4]);
-    char* type1 = argv[5];
-    char* type2 = argv[6];
+    char* type1 = argv[2];
+    char* type2 = argv[3];
+    float t_start = atof(argv[4]);
+    float t_end = atof(argv[5]);
+    float frame_w = atof(argv[6]);
     
     FILE *file;
     int N_frames = int((t_end - t_start)/frame_w) + 1;
@@ -129,7 +129,7 @@ int main(int argc, char* argv[]){
     if(file == NULL) {printf("Could not create msd dat file. Exiting...\n"); exit(-1);}
     else printf("Writing to %s file...\n", msdFile); 
     fprintf(file, "frame msd\n");
-    for(int i = 0; i < N_frames; i++) fprintf(file, "%d %f\n", i, meanSquaredDisplacement[i]);
+    for(int i = 0; i < N_frames; i++) fprintf(file, "%f %f\n", i*frame_w, meanSquaredDisplacement[i]);
     fclose(file);
     
     return 0;
