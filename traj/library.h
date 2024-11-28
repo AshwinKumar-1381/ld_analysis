@@ -1,3 +1,8 @@
+// library.h
+
+#ifndef LIBRARY_H
+#define LIBRARY_H
+
 #include<iostream>
 #include<fstream>
 #include<cstring>
@@ -7,3 +12,5 @@
 #include<filesystem>
 
 using namespace std;
+
+#endif /*LIBRARY_H*/

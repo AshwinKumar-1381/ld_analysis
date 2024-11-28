@@ -32,7 +32,9 @@ def readData(fpath):
     
     for line in fobj:
         line = line.removesuffix("\n").split(sep = " ")
-        for i in range(nCols): Cols[i].append(liteval(line[i]))
+        for i in range(nCols): 
+            if(line[i].isalpha() == True): Cols[i].append(line[i])
+            else: Cols[i].append(liteval(line[i]))
     
     fobj.close()
     return(Cols)
