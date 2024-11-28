@@ -21,14 +21,31 @@ namespace analysis {
 	
 	} atom_style;
 
+	class particleBin {
+
+	public:
+
+	float L, binWidth;
+	int nBins;
+	float *bin;
+
+	particleBin(float L, float binWidth);
+	~particleBin();
+
+	void addParticle(float rx = 0.0);
+	void normalize();
+	void zero();
+
+	};
+
 	class Trajectory {
 
 	public:
 
 	int nAtoms, frame_nr, step;
-	float time, timeStep, frameWidth;
+	float timeStep, time, frameWidth;
 
-	char *fpath, *pipeString, *pipeChar;
+	char *fpathI, *fpathO, *pipeString, *pipeChar;
 	FILE *fileI, *fileO;
 
 	Trajectory(float timeStep = 1.0, float frameWidth = 1.0);
@@ -38,6 +55,9 @@ namespace analysis {
 	void closeTrajectory();
 	void readThisFrame(atom_style *ATOMS);
 	void readNextFrame(atom_style *ATOMS);
+
+	void write2file();
+	void write2file(particleBin *binA, particleBin *binB, int ctr);
 
 	};
 }
