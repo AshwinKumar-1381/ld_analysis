@@ -1,7 +1,5 @@
-import matplotlib as mpl
 import os
 from ast import literal_eval as liteval
-import math as m
 
 def readLogParam(entry, fpath):
     fobj = open(fpath, mode = "r", encoding = "utf-8")
@@ -25,16 +23,39 @@ def makeFilePath(nr, type1, type2, extras):
     elif(extras[0] == 'msd' and type1 == 'cpp'): fpath += "/relaxa_{type2}/msd.dat".format(type2 = type2) 
     return(fpath)
 
-def readData(fpath):
+def readData(fpath, nDataSets):
     fobj = open(fpath, mode = 'r', encoding = "utf-8")
     nCols = len(fobj.readline().removesuffix("\n").split(sep = " "))
-    Cols = [[] for i in range(nCols)]
     
-    for line in fobj:
-        line = line.removesuffix("\n").split(sep = " ")
-        for i in range(nCols): 
-            if(line[i].isalpha() == True): Cols[i].append(line[i])
-            else: Cols[i].append(liteval(line[i]))
+    if(nDataSets == 1):
+        Cols = [[] for i in range(nCols)]
+    
+        for line in fobj:
+            line = line.removesuffix("\n").split(sep = " ")
+            if(line[0].isalpha() == False):
+                for i in range(nCols):
+                    if(line[i].isalpha() == True): 
+                        Cols[i].append(line[i])
+                    else:
+                        Cols[i].append(liteval(line[i]))
+            else:
+                continue
+    
+    else:
+        Cols = [[] for i in range(nCols*nDataSets)]
+        
+        dataCtr = -1
+        for line in fobj:
+            line = line.removesuffix("\n").split(sep = " ")
+            if(line[0].isalpha() == False):
+                for i in range(nCols):
+                    if(line[i].isalpha() == True): 
+                        Cols[nCols*dataCtr + i].append(line[i])
+                    else:
+                        Cols[nCols*dataCtr + i].append(liteval(line[i]))
+            else:
+                dataCtr += 1
+                continue
     
     fobj.close()
     return(Cols)
