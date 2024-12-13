@@ -13,7 +13,8 @@ using namespace program;
 namespace analysis
 {
 	void computeInteractionPressure(Trajectory *TRAJ, atom_style *ATOMS, System *BOX, pair_style *INTERACTION, particleBin **Pin);
-	void computeSwimPressure(Trajectory *TRAJ, atom_style *ATOMS, System *BOX, particleBin *Pswim);
+	void computeKineticPressure(Trajectory *TRAJ, atom_style *ATOMS, System *BOX, particleBin **Pkin);
+	void computeSwimPressure(Trajectory *TRAJ, atom_style *ATOMS, System *BOX, particleBin *Pswim, float PeA, float PeB);
 }
 
 #endif /*IK_H*/

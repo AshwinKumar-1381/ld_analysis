@@ -86,7 +86,7 @@ namespace analysis {
 
 	void write2file();
 	void write2file(particleBin *binA, particleBin *binB, int ctr = 0);
-	void write2file(particleBin **Pin, int ctr = 0);
+	void write2file(particleBin **Pin, particleBin **Pkin, particleBin *Pswim, int ctr = 0);
 
 	};
 }

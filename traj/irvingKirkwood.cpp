@@ -87,9 +87,6 @@ void analysis::computeInteractionPressure(Trajectory *TRAJ, atom_style *ATOMS, S
 {
 	BOX->buildCellList(ATOMS); 
 
-	float delxCom = TRAJ->xCom - 0.5*BOX->Lx;
-	float binW = Pin[0]->binWidth;
-
 	for(int icell = 1; icell <= BOX->ncells; icell++)
 	{
 		int i = BOX->HEAD[icell];
@@ -158,7 +155,33 @@ void analysis::computeInteractionPressure(Trajectory *TRAJ, atom_style *ATOMS, S
 	}
 }	
 
-void analysis::computeSwimPressure(Trajectory *TRAJ, atom_style *ATOMS, System *BOX, particleBin *Pswim)
+void analysis::computeKineticPressure(Trajectory *TRAJ, atom_style *ATOMS, System *BOX, particleBin **Pkin)
 {
-	
+	float delxCom = TRAJ->xCom - 0.5*BOX->Lx;
+
+	for(int i = 0; i < TRAJ -> nAtoms; i++)
+	{
+		float vx = ATOMS[i].px;
+		float vy = ATOMS[i].py;
+
+		Pkin[0] -> addToBin(ATOMS[i].rxt1 - delxCom, vx * vx);
+		Pkin[1] -> addToBin(ATOMS[i].rxt1 - delxCom, vx * vy);
+		Pkin[2] -> addToBin(ATOMS[i].rxt1 - delxCom, vy * vx);
+		Pkin[3] -> addToBin(ATOMS[i].rxt1 - delxCom, vy * vy);
+	}
+}
+
+void analysis::computeSwimPressure(Trajectory *TRAJ, atom_style *ATOMS, System *BOX, particleBin *Pswim, float PeA, float PeB)
+{
+	float delxCom = TRAJ->xCom - 0.5*BOX->Lx;
+
+	for(int i = 0; i < TRAJ -> nAtoms; i++)
+	{
+		float rx = abs(ATOMS[i].rxt1 - 0.5*BOX->Lx);
+
+		if(ATOMS[i].id == 'N')
+			Pswim -> addToBin(ATOMS[i].rxt1 - delxCom, rx*PeA);			
+		else
+			Pswim -> addToBin(ATOMS[i].rxt1 - delxCom, rx*PeB);
+	}
 }

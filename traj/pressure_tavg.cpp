@@ -4,12 +4,13 @@
 
 int main(int argc, char *argv[])
 {
-	float Lx = 200.0, Ly = 100.0, binWidth = 6.0;
+	float Lx = 200.0, Ly = 100.0, binWidth = 4.0;
 	float timeStart = 10e3, timeEnd = 15e3;
+	float PeA = 0.0, PeB = 50.0;
 
 	Trajectory *TRAJ = new Trajectory(5e-4);
-	sprintf(TRAJ->fpathI, "../../LD/LD-cpp/Data32/traj3.xyz");
-	sprintf(TRAJ->fpathO, "../../LD/LD-cpp/Data32/pressure_tavg_6.dat");
+	sprintf(TRAJ -> fpathI, "../../LD/LD-cpp/Data55/traj3.xyz");
+	sprintf(TRAJ -> fpathO, "../../LD/LD-cpp/Data55/pressure_tavg.dat");
 	TRAJ -> openTrajectory();
 
 	System *BOX = new System(Lx, Ly, TRAJ->nAtoms);
@@ -18,9 +19,14 @@ int main(int argc, char *argv[])
 
 	int nProps = 4;
 	particleBin **Pin = new particleBin*[nProps];
+	particleBin **Pkin = new particleBin*[nProps];
+	particleBin *Pswim = new particleBin(Lx, Ly, binWidth);
 
 	for(int i = 0; i < nProps; i++)
+	{
 		Pin[i] = new particleBin(Lx, Ly, binWidth);
+		Pkin[i] = new particleBin(Lx, Ly, binWidth);
+	}
 
 	int nFrames = 0;
 	while (!feof(TRAJ->fileI))
@@ -34,24 +40,40 @@ int main(int argc, char *argv[])
 
 			TRAJ -> computeCom(ATOMS);
 			analysis::computeInteractionPressure(TRAJ, ATOMS, BOX, INTERACTION, Pin);
+			analysis::computeKineticPressure(TRAJ, ATOMS, BOX, Pkin);
+			analysis::computeSwimPressure(TRAJ, ATOMS, BOX, Pswim, PeA, PeB);
 
 			for(int i = 0; i < nProps; i++)
 			{
 				Pin[i] -> normalize(Pin[i] -> bin, Ly);
 				Pin[i] -> addBins(Pin[i] -> binavg, Pin[i] -> bin);
 				Pin[i] -> zero(Pin[i] -> bin);
+
+				Pkin[i] -> normalize(Pkin[i] -> bin);
+				Pkin[i] -> addBins(Pkin[i] -> binavg, Pkin[i] -> bin);
+				Pkin[i] -> zero(Pkin[i] -> bin);
 			}
+
+			Pswim -> normalize(Pswim -> bin);
+			Pswim -> addBins(Pswim -> binavg, Pswim -> bin);
+			Pswim -> zero(Pswim ->bin);
 		}
 	}
 
 	for(int i = 0; i < nProps; i++)
+	{
 		Pin[i] -> normalize(Pin[i] -> binavg, float(nFrames));
+		Pkin[i] -> normalize(Pkin[i] -> binavg, float(nFrames));
+	}
+	Pswim -> normalize(Pswim -> binavg, float(nFrames));
 
-	TRAJ -> write2file(Pin);
+	printf("PDF averaged from %d to %d over %d frames.\n", int(timeStart), int(timeEnd), nFrames);
+
+	TRAJ -> write2file(Pin, Pkin, Pswim);
 	TRAJ -> closeTrajectory();
 }
 
-void analysis::Trajectory::write2file(particleBin **Pin, int ctr)
+void analysis::Trajectory::write2file(particleBin **Pin, particleBin **Pkin, particleBin *Pswim, int ctr)
 {
 	remove(fpathO);
 
@@ -62,10 +84,10 @@ void analysis::Trajectory::write2file(particleBin **Pin, int ctr)
 		exit(-1);
 	}
 
-	fprintf(fileO, "x Pin_xx Pin_xy Pin_yx Pin_yy\n");
+	fprintf(fileO, "x Pin_xx Pin_xy Pin_yx Pin_yy Pkin_xx Pkin_xy Pkin_yx Pkin_yy Pswim\n");
 
 	for(int i = 0; i < Pin[0] -> nBins; i++)
-		fprintf(fileO, "%f %f %f %f %f\n", (i+1)*Pin[0]->binWidth, Pin[0]->binavg[i], Pin[1]->binavg[i], Pin[2]->binavg[i], Pin[3]->binavg[i]);
+		fprintf(fileO, "%f %f %f %f %f %f %f %f %f %f\n", (i+1)*Pin[0]->binWidth, Pin[0]->binavg[i], Pin[1]->binavg[i], Pin[2]->binavg[i], Pin[3]->binavg[i], Pkin[0]->binavg[i], Pkin[1]->binavg[i], Pkin[2]->binavg[i], Pkin[3]->binavg[i], Pswim->binavg[i]);
 
 	fclose(fileO);
 }

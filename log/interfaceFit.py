@@ -30,8 +30,8 @@ def getGibbsPlane(x, pdf):
             y1 = [(phiL - i) for i in pdf[0:pos+1]]
             y2 = [(i - phiG) for i in pdf[pos:len(x)]]
             
-        int1.append(np.trapz(y1,x1))
-        int2.append(np.trapz(y2,x2))
+        int1.append(np.trapezoid(y1,x1))
+        int2.append(np.trapezoid(y2,x2))
             
     for i in range(len(x)):
         if(int1[i] >= int2[i]):
@@ -50,7 +50,7 @@ def fitPhiProfile(x, pdf, xG):
     popt, pcov = scipy.optimize.curve_fit(phi, x, pdf)
     return(popt)
 
-fac = m.pi/4
+fac = 1
 markers = ["o", "s", "^", "*", "D"]
 lw = 0.5
 ms = 3
@@ -60,13 +60,13 @@ fontsize = 14
 option = "tavg"
 if(option == "frames"):
     # Params for frames-based data
-    nr = 31
+    nr = 21
     Lx = 200
     Pe = "1.0"
-    lamb = " 10^{-2}" 
+    lamb = " 10^{-3}" 
     pdfSamples = [11e3, 12e3, 13e3, 14e3, 15e3]
-    nSamples = len(pdfSamples)
-    sampleNum = [0, 1, 2, 3, 4]
+    nSamples = 5
+    sampleNum = [0, 4]
     
     fpath = "../../LD/LD-cpp/Data{nr}/pdf_frames.dat".format(nr = nr)
     figpath = "../../LD/LD-cpp/imgs/pdf_frames_all_{nr}.png".format(nr = nr)
@@ -78,36 +78,39 @@ if(option == "frames"):
         pdfA = pdfData[3*i + 1]
         pdfB = pdfData[3*i + 2]
         
-        x = [j - Lx/(2*len(x)) for j in x]
+        x = [(j-Lx/(2*len(x))-Lx/2) for j in x]
         pdfALL = []
         for j in range(len(x)):
             pdfALL.append((pdfA[j] + pdfB[j])*fac)
         
         ax.plot(x, pdfALL, "-o", lw = lw, ms = ms, label = str(pdfSamples[i]))
 
-    ax.set(xlim = (0, Lx/2), ylim = (-0.01, 1.0), aspect = Lx/2)
-    ax.set_xlabel(r"$x ~ (\sigma)$", fontsize = fontsize)
-    ax.set_ylabel(r"$\phi ~ (x)$", fontsize = fontsize)
-    ax.legend(title = "time", fontsize = fontsize - 4)
+    ax.set(xlim = (-Lx/2, Lx/2), ylim = (-0.01, 1.0), aspect = Lx)
+    ax.set_xlabel(r"$x ~ (\sigma)$", fontsize = fontsize - 4)
+    ax.set_ylabel(r"$\phi ~ (x)$", fontsize = fontsize - 4)
+    ax.legend(title = "time", fontsize = fontsize - 8)
+    fig.suptitle(r"Simulation Parameters : $Pe_s = {Pe},~ \lambda = {lamb}$".format(Pe=Pe,lamb=lamb), 
+                 fontsize = fontsize - 4)
 
 if(option == "tavg"):
     # Params for time-averaged data
-    nr_list = [31, 32]
-    simParams = [1, 5, 10, 25, 50]
+    nr_list = [51, 55]
+    Pe = [1, 50]
+    lamb = ["1"]
     Lx = 200.0
     
     fig, ax = mpl.pyplot.subplots()
     fig2, ax2 = mpl.pyplot.subplots()
     for i in range(len(nr_list)):
         fpath = "../../LD/LD-cpp/Data{nr}/pdf_tavg.dat".format(nr = nr_list[i])
-        figpath = "../../LD/LD-cpp/imgs/pdf_tavg_all.png"
+        figpath = "../../LD/LD-cpp/imgs/pdf_tavg_1.png"
         pdfData = file_utils.readData(fpath, 1)
         
         x = pdfData[0]
         pdfA = pdfData[1]
         pdfB = pdfData[2]
         
-        x = [j - Lx/(2*len(x)) for j in x]
+        x = [(j-Lx/(2*len(x))-Lx/2) for j in x]
         
         pdfALL = []
         pdfALLavg = []
@@ -117,8 +120,8 @@ if(option == "tavg"):
             pdfALLavg.append(0.5*(pdfALL[j] + pdfALL[len(x) - 1 - j]))
         
         mid = int(len(pdfALL)/2)
-        ax.plot(x, pdfALL, "-o", lw = lw, ms = ms, fillstyle = fs, label = str(simParams[i]))
-        ax2.plot(x[0:mid], pdfALLavg, "-o", lw = lw, ms = ms, fillstyle = fs, label = str(simParams[i]))
+        ax.plot(x, pdfALL, "-o", lw = lw, ms = ms, fillstyle = fs, label = str(Pe[i]))
+        ax2.plot(x[0:mid], pdfALLavg, "-o", lw = lw, ms = ms, fillstyle = fs, label = str(Pe[i]))
     
         xG1 = getGibbsPlane(x[0:mid], pdfALL[0:mid])
         xG2 = getGibbsPlane(x[mid:len(x)], pdfALL[mid:len(x)])
@@ -127,10 +130,10 @@ if(option == "tavg"):
         C2 = fitPhiProfile(x[mid:len(x)], pdfALL[mid:len(x)], xG2)
         
         C = [0.5*(abs(C1[i])+abs(C2[i])) for i in range(len(C1))]
-        print("Pe = {Pe}, rhoG = {rhoG}, rhoL = {rhoL}, D = {D}".format(Pe = simParams[i], 
-                rhoG = C[0]+C[1], rhoL = C[0]-C[1], D = m.sqrt(m.pi)*C[2]))
+        print("Pe = {Pe}, rhoG = {rhoG}, rhoL = {rhoL}, D = {D}".format(Pe = Pe[i], 
+                    rhoG = C[0]+C[1], rhoL = C[0]-C[1], D = m.sqrt(m.pi)*C[2]))
         
-        pdfFit = [C[0]+C[1]*np.tanh((i-xG1)/C[2]) for i in x[0:mid]]
+        """
         pdfFit = [C[0]+C[1]*np.tanh((i-xG1)/C[2]) for i in x[0:mid]]
         ax2.plot(x[0:mid], pdfFit, "-o", lw = lw, ms = ms, fillstyle = fs)
         
@@ -141,14 +144,17 @@ if(option == "tavg"):
             SSres += (pdfFit[i] - pdfTestFit[i])**2
             SStot += (pdfTestFit[i] - sum(pdfTestFit)/len(pdfTestFit))**2
         print(1-SSres/SStot)
+        """
     
+    ax.set(xlim = (-Lx/2, Lx/2), ylim = (-0.01, 1.8), aspect = Lx/2)
+    ax.set_xlabel(r"$x~(\sigma)$", fontsize = fontsize - 4)
+    ax.set_ylabel(r"$<\rho~(x)>$", fontsize = fontsize - 4)
+    ax.legend(title = r"$Pe_s$", fontsize = fontsize - 8)
+    fig.suptitle(r"$\lambda = {lamb}$".format(lamb = lamb[0]))
     
-    ax.set(xlim = (0, Lx), ylim = (-0.01, 1), aspect = Lx)
-    ax.set_xlabel(r"$x~(\sigma)$", fontsize = fontsize)
-    ax.set_ylabel(r"$<\phi~(x)>$", fontsize = fontsize)
-    ax.legend(title = r"$Pe_s$", fontsize = fontsize - 4)
+    ax2.set(xlim = (-Lx/2, 0), ylim = (-0.01, 1), aspect = Lx/2)
+    ax2.set_xlabel(r"$x~(\sigma)$", fontsize = fontsize - 4)
+    ax2.set_ylabel(r"$<\rho~(x)>$", fontsize = fontsize - 4)
+    ax2.legend(title = r"$Pe_s$", fontsize = fontsize - 6)
     
-    ax2.set(xlim = (0, Lx/2), ylim = (-0.01, 1), aspect = Lx/2)
-    ax2.set_xlabel(r"$x~(\sigma)$", fontsize = fontsize)
-    ax2.set_ylabel(r"$<\phi~(x)>$", fontsize = fontsize)
-    ax2.legend(title = r"$Pe_s$", fontsize = fontsize - 4)
+    fig.savefig(figpath, dpi = 600, bbox_inches = "tight")

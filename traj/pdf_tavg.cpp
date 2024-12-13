@@ -6,22 +6,18 @@ using namespace analysis;
 
 int main(int argc, char *argv[])
 {
-	float timeStart = 10e3;
-	float timeEnd = 15e3;
-	float Lx = 200.0, Ly = 100.0;
-	float binWidth = 4.0;
+	float Lx = 200.0, Ly = 100.0, binWidth = 4.0;
+	float timeStart = 10e3, timeEnd = 15e3;
 
 	Trajectory *TRAJ = new Trajectory(5e-4);
-	sprintf(TRAJ -> fpathI, "../../LD/LD-cpp/Data31/traj3.xyz");
-	sprintf(TRAJ -> fpathO, "../../LD/LD-cpp/Data31/pdf_tavg.dat");
+	sprintf(TRAJ -> fpathI, "../../LD/LD-cpp/Data55/traj3.xyz");
+	sprintf(TRAJ -> fpathO, "../../LD/LD-cpp/Data55/pdf_tavg.dat");
 	TRAJ -> openTrajectory();
 
 	atom_style *ATOMS = new atom_style [TRAJ->nAtoms];
 
 	particleBin *binA = new particleBin(Lx, Ly, binWidth);
 	particleBin *binB = new particleBin(Lx, Ly, binWidth);
-	particleBin *binAavg = new particleBin(Lx, Ly, binWidth);
-	particleBin *binBavg = new particleBin(Lx, Ly, binWidth);
 
 	int nFrames = 0;
 	while( !feof(TRAJ->fileI) )
@@ -41,22 +37,22 @@ int main(int argc, char *argv[])
 					binB -> addToBin(ATOMS[i].rxt1 - delxCom);
 			}
 
-			binA -> normalize();
-			binB -> normalize();
-			binAavg -> addBins(binA);
-			binBavg -> addBins(binB);
-			binA -> zero();
-			binB -> zero();
+			binA -> normalize(binA->bin);
+			binB -> normalize(binB->bin);
+			binA -> addBins(binA->binavg, binA->bin);
+			binB -> addBins(binB->binavg, binB->bin);
+			binA -> zero(binA->bin);
+			binB -> zero(binB->bin);
 			nFrames++;
 		}
 	}
 
-	binAavg -> normalize(nFrames);
-	binBavg -> normalize(nFrames);
+	binA -> normalize(binA->binavg, nFrames);
+	binB -> normalize(binB->binavg, nFrames);
 
 	printf("PDF averaged from %d to %d over %d frames.\n", int(timeStart), int(timeEnd), nFrames);
 
-	TRAJ -> write2file(binAavg, binBavg);
+	TRAJ -> write2file(binA, binB);
 	TRAJ -> closeTrajectory();
 
 	return(0);
@@ -76,7 +72,7 @@ void analysis::Trajectory::write2file(particleBin *binA, particleBin *binB, int 
 	fprintf(fileO, "x pdfA pdfB\n");
 
 	for(int i = 0; i < binA->nBins; i++)
-		fprintf(fileO, "%d %f %f\n", int((i+1)*binA->binWidth), binA->bin[i], binB->bin[i]);
+		fprintf(fileO, "%d %f %f\n", int((i+1)*binA->binWidth), binA->binavg[i], binB->binavg[i]);
 
 	fclose(fileO);
 }

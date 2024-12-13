@@ -6,14 +6,13 @@ using namespace analysis;
 
 int main(int argc, char *argv[])
 {
+	float Lx = 200.0, Ly = 100.0, binWidth = 4.0;
 	float sampleTimes[5] = {11e3, 12e3, 13e3, 14e3, 15e3};
-	float Lx = 200.0, Ly = 100.0;
-	float binWidth = 4.0;
 
 	// Create a trajectory object
 	Trajectory *TRAJ = new Trajectory(5e-4);
-	sprintf(TRAJ -> fpathI, "../../LD/LD-cpp/Data32/traj3.xyz");
-	sprintf(TRAJ -> fpathO, "../../LD/LD-cpp/Data32/pdf_frames.dat");
+	sprintf(TRAJ -> fpathI, "../../LD/LD-cpp/Data21/traj3.xyz");
+	sprintf(TRAJ -> fpathO, "../../LD/LD-cpp/Data21/pdf_frames.dat");
 	TRAJ -> openTrajectory();
 
 	// Create an atoms object
@@ -44,11 +43,11 @@ int main(int argc, char *argv[])
 					binB -> addToBin(ATOMS[i].rxt1 - delxCom);
 			}
 
-			binA -> normalize();
-			binB -> normalize();
+			binA -> normalize(binA->bin);
+			binB -> normalize(binB->bin);
 			TRAJ -> write2file(binA, binB, ctr);
-			binA -> zero();
-			binB -> zero();
+			binA -> zero(binA->bin);
+			binB -> zero(binB->bin);
 
 			ctr++;
 		}

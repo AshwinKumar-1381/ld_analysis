@@ -140,7 +140,6 @@ void analysis::particleBin::zero(float *binTozero)
 {
 	for(int i = 0; i < nBins; i++)
 		binTozero[i] = 0.0;
-
 }
 
 void analysis::particleBin::addBins(float *bin1, float *bin2)
@@ -180,7 +179,7 @@ void analysis::Trajectory::openTrajectory()
 		fgets(pipeString, 500, fileI);
 		sscanf(pipeString, "%d", &nAtoms);
 		rewind(fileI);
-		printf("Trajectory %s file opened and ready to be read...\n", fpathI);
+		printf("\nTrajectory %s file opened and ready to be read...\n", fpathI);
 	}
 }
 
