@@ -1,136 +1,110 @@
 /*
- Code to read trajectory file and calculate
- Mean-Squared-Displacement (MSD) of particles
+	Code to compute the Mean-Squared-Displacement of a group of atoms
+	by averaging over each particle's trajectory and over all particles
+	in the group.
 
- ------- Inputs ---------
- nr         - file number
- type1      - lmp/cpp
- type2      - eq/ss
- t_start    - time to start with
- t_end      - time to end 
- frame_w    - time interval corresponding to each frame
- ------------------------
- 
- Author        : Ashwin Kumar M
- Date created  : 11.10.24
- Last modified : 01.11.24
+	Author			: Ashwin Kumar (CH23S006)
+	Date created 	: 15.03.25
+	Last modified	: 18.03.25
 */
 
-#include "library.h"
-#include "file_utils.h"
+#include "analysis.h"
 
-using namespace std;
-using namespace fileUtils;
+using namespace analysis;
 
-struct atomCoords{
-    float rx_t0 = 0.0, ry_t0 = 0.0;
-    float rx_t1 = 0.0, ry_t1 = 0.0;
-    float rx_t2 = 0.0, ry_t2 = 0.0;
-    int jump_x = 0, jump_y = 0;
-    void unwrap_pbc(int boxLength);  
-};
+float* computeMeanSquaredDisplacement(Trajectory *TRAJ, System *BOX, atom_style **ATOMS, const int delFrames[], int N);
 
-void atomCoords::unwrap_pbc(int boxLength){
-    if(rx_t2 - rx_t1 <= -0.5*boxLength) jump_x += 1;
-    else if(rx_t2 - rx_t1 >= 0.5*boxLength) jump_x -= 1;
-    if(ry_t2 - ry_t1 <= -0.5*boxLength) jump_y += 1;
-    else if(ry_t2 - ry_t1 >= 0.5*boxLength) jump_y -= 1;
+int main(int argc, char *argv[])
+{
+	float startTime = 0.0, endTime = 10000.0, dt = 5e-5;
+	int frameW = 200000;						// (width of each frame in terms of no. of steps)
+	float Lx = 100.0, Ly = 100.0;
+
+	int nSample = 10;
+	int delFrames[nSample] = {1, 2, 5, 10, 20, 50, 100, 200, 500, 1000};
+
+	Trajectory *TRAJ = new Trajectory(dt, frameW);
+	sprintf(TRAJ -> fpathI, "//media/ashwin/One Touch/ashwin_md/msd_benchmarks/Mar2025/Data278/traj2.xyz");
+	sprintf(TRAJ -> fpathO, "//media/ashwin/One Touch/ashwin_md/msd_benchmarks/Mar2025/Data278/msd.dat");
+	
+	TRAJ -> openTrajectory(true);
+
+	System *BOX = new System(Lx, Ly, TRAJ->nAtoms);
+
+	atom_style **ATOMS = new atom_style* [TRAJ->totalFrames];
+	for(int i = 0; i < TRAJ -> totalFrames; i++) 
+		ATOMS[i] = new atom_style [TRAJ->nAtoms];
+
+	TRAJ -> importTrajectory(ATOMS, BOX);
+	TRAJ -> closeTrajectory(); 
+
+	float *meanSquaredDisplacement = computeMeanSquaredDisplacement(TRAJ, BOX, ATOMS, delFrames, nSample);
+
+	TRAJ -> write2file(meanSquaredDisplacement, delFrames, nSample);
+
+	delete[] ATOMS; 
+	return(0);
 }
 
-void computeMeanSquaredDisplacement(float *meanSquaredDisplacement, FILE *file, int frame_start, int nFrames, int nAtoms, int boxLength){
+float* computeMeanSquaredDisplacement(Trajectory *TRAJ, System *BOX, atom_style **ATOMS, const int delFrames[], int N)
+{
+	printf("\nComputing MSD...\n");
 
-    for(int i = 0; i < nFrames; i++) meanSquaredDisplacement[i] = 0.0;
-    
-    atomCoords *atoms = (atomCoords*) malloc(nAtoms*sizeof(atomCoords));
-    char* pipeString = (char*) malloc(500*sizeof(char));
-    int frame_nr = 0;
-    
-    rewind(file);
-    while(!feof(file)){
-    
-        fgets(pipeString, 500, file);
-        fgets(pipeString, 500, file);
-        frame_nr += 1;
-        
-        if(frame_nr < frame_start + 1){
-            for(int i = 0; i < nAtoms; i++) fgets(pipeString, 500, file);
-        }
-        
-        if(frame_nr == frame_start + 1){
-        
-            for(int i = 0; i < nAtoms; i++){
-            
-                fgets(pipeString, 500, file);
-                sscanf(pipeString, "%*c %f %f %*f", &atoms[i].rx_t0, &atoms[i].ry_t0);
-                atoms[i].rx_t1 = atoms[i].rx_t0;
-                atoms[i].ry_t1 = atoms[i].ry_t0;
-            }
-        }
-        
-        if(frame_nr > frame_start + 1 and frame_nr <= frame_start + nFrames){
-        
-            for(int i = 0; i < nAtoms; i++){
-            
-                fgets(pipeString, 500, file);
-                sscanf(pipeString, "%*c %f %f %*f", &atoms[i].rx_t2, &atoms[i].ry_t2);
-                atoms[i].unwrap_pbc(boxLength);
-                
-                float dx = (atoms[i].rx_t2 + boxLength*atoms[i].jump_x) - atoms[i].rx_t0;
-                float dy = (atoms[i].ry_t2 + boxLength*atoms[i].jump_y) - atoms[i].ry_t0;
-                
-                meanSquaredDisplacement[frame_nr - (frame_start+1)] += dx*dx + dy*dy;
-                
-                atoms[i].rx_t1 = atoms[i].rx_t2;
-                atoms[i].ry_t1 = atoms[i].ry_t2;
-            }
-            meanSquaredDisplacement[frame_nr - (frame_start+1)] /= nAtoms;
-        }
-    }
-    delete(pipeString, atoms);
+	float *meanSquaredDisplacement = new float[N];
+	int *numSamples = new int[N];
+
+	for(int i = 0; i < N; i++)
+	{
+		meanSquaredDisplacement[i] = 0.0;
+		numSamples[i] = 0;
+	}
+
+	for(int i = 0; i < TRAJ -> totalFrames; i++)
+	{
+		int ctr = 0;
+
+		while(ctr < N)
+		{
+			int nextFrame = i + delFrames[ctr];
+			
+			if(nextFrame < TRAJ -> totalFrames)
+			{
+				for(int j = 0; j < TRAJ -> nAtoms; j++)
+				{
+					float dx = ATOMS[nextFrame][j].rxt1 - ATOMS[i][j].rxt1 + BOX->Lx*(ATOMS[nextFrame][j].jumpx - ATOMS[i][j].jumpx);
+
+					float dy = ATOMS[nextFrame][j].ryt1 - ATOMS[i][j].ryt1 + BOX->Ly*(ATOMS[nextFrame][j].jumpy - ATOMS[i][j].jumpy);
+
+					meanSquaredDisplacement[ctr] += dx*dx + dy*dy;
+					numSamples[ctr] += 1;
+				}
+			}
+
+			ctr++;
+		}
+	}
+
+	for(int i = 0; i < N; i++)
+		meanSquaredDisplacement[i] /= numSamples[i];
+
+	return(meanSquaredDisplacement);
 }
 
-int main(int argc, char* argv[]){
-   
-    int nr = atoi(argv[1]);
-    char* type1 = argv[2];
-    char* type2 = argv[3];
-    float t_start = atof(argv[4]);
-    float t_end = atof(argv[5]);
-    float frame_w = atof(argv[6]);
-    
-    FILE *file;
-    int N_frames = int((t_end - t_start)/frame_w) + 1;
-    
-    string log("log"), traj("traj"), msd("msd");
-    char *logFile = fileUtils::makeFilePath(nr, type1, type2, log.c_str());
-    char *trajFile = fileUtils::makeFilePath(nr, type1, type2, traj.c_str());
-    char *msdFile = fileUtils::makeFilePath(nr, type1, type2, msd.c_str());
-    
-    file = fopen(logFile, "r");
-    if(file == NULL){ printf("Can not open log file. Exiting ...\n"); exit(-1);}
-    else printf("Opening Log file to read params L and N...\n");
-    
-    fileUtils::log_param nAtoms = {0, 'N'}, boxL = {0, 'L'};
-    nAtoms.read_log(file); 
-    boxL.read_log(file);
-    fclose(file);
-    
-    float* meanSquaredDisplacement = (float*) malloc(N_frames*sizeof(float));
-    
-    file = fopen(trajFile, "r");
-    if(file == NULL) {printf("Can not open trajectory file. Exiting...\n"); exit(-1);}
-    else printf("Opening trajectory file to read atomic coordinates...\n");
-    
-    computeMeanSquaredDisplacement(meanSquaredDisplacement, file, int(t_start/frame_w+0.1), N_frames, nAtoms.val, boxL.val);
-    fclose(file);
- 
-    remove(msdFile);
-    file = fopen(msdFile, "a+");
-    if(file == NULL) {printf("Could not create msd dat file. Exiting...\n"); exit(-1);}
-    else printf("Writing to %s file...\n", msdFile); 
-    fprintf(file, "frame msd\n");
-    for(int i = 0; i < N_frames; i++) fprintf(file, "%f %f\n", i*frame_w, meanSquaredDisplacement[i]);
-    fclose(file);
-    
-    return 0;
+void analysis::Trajectory::write2file(float *meanSquaredDisplacement, const int delFrames[], int nSamples)
+{
+	remove(fpathO);
+
+	fileO = fopen(fpathO, "w");
+	if(fileO == NULL)
+	{
+		printf("Error. Cannot create new file %s. Exiting...\n", fpathO);
+		exit(-1);
+	}
+	else
+		fprintf(fileO, "step msd\n");
+
+	for(int i = 0; i < nSamples; i++)
+		fprintf(fileO, "%d %f\n", frameWidth*delFrames[i], meanSquaredDisplacement[i]);	
+
+	fclose(fileO);
 }

@@ -6,26 +6,30 @@ using namespace analysis;
 
 /* ----------------- atomsXYZ members -----------------*/
 
-analysis::atomsXYZ::atomsXYZ(){}
+analysis::atomsXYZ::atomsXYZ()
+{
+	rxt1 = ryt1 = rzt1 = 0.0;
+	jumpx = jumpy = 0;
+}
+
 analysis::atomsXYZ::~atomsXYZ(){}
 
 /* ----------------- System members -----------------*/
 
-analysis::System::System(float Lx, float Ly, float nAtoms)
+analysis::System::System(float Lx, float Ly, float nAtoms, float rcellx, float rcelly)
 {
 	this -> Lx = Lx;
 	this -> Ly = Ly;
 	this -> nAtoms = nAtoms;
+	this -> rcellx = rcellx;
+	this -> rcelly = rcelly;
 
-	rcellx = 1.122462048;
-	rcelly = rcellx;
-
-	Ncellx = int(this->Lx/rcellx);
-	Ncelly = int(this->Ly/rcelly);
+	Ncellx = int(this->Lx/this->rcellx);
+	Ncelly = int(this->Ly/this->rcelly);
 	ncells = int(Ncellx*Ncelly);
 
-	rcellx = this->Lx/Ncellx;
-	rcelly = this->Ly/Ncelly; 
+	this->rcellx = this->Lx/Ncellx;
+	this->rcelly = this->Ly/Ncelly; 
 
 	for(int i = 0; i < MAXCELL; i++)
 	{
@@ -34,17 +38,17 @@ analysis::System::System(float Lx, float Ly, float nAtoms)
 		HEAD[i] = 0;
 	}
 
-	buildCellMaps();
+	//buildCellMaps();
 }
 
 analysis::System::~System(){}
 
 int analysis::System::cellindex(int ix, int iy)
 {   
-    if (ix == Ncellx) ix = 0; 
-	else if (ix==-1) ix = Ncellx - 1; 
-	if (iy == Ncelly) iy = 0;
-	else if (iy == -1) iy = Ncelly - 1;
+    if (ix >= Ncellx) ix = ix - Ncellx; 
+	else if (ix <= -1) ix = ix + Ncellx; 
+	if (iy >= Ncelly) iy = iy - Ncelly;
+	else if (iy <= -1) iy = iy + Ncelly;
 
 	if(Ncellx >= Ncelly)
 		return (1 + ix + iy*Ncellx);
@@ -103,14 +107,16 @@ void analysis::System::checkMinImage(float *dx, float *dy)
 	}
 }
 
-/* ----------------- particleBin members -----------------*/
+/* ----------------- Bin1D members -----------------*/
 
-analysis::particleBin::particleBin(float Lx, float Ly, float binWidth)
+analysis::Bin1D::Bin1D(float Lx, float Ly, float binWidth)
 {
 	this -> Lx = Lx;
 	this -> Ly = Ly;
 	this -> binWidth = binWidth;
+
 	nBins = int(Lx/binWidth);
+
 	bin = new float[nBins];
 	binavg = new float[nBins];
 
@@ -118,9 +124,9 @@ analysis::particleBin::particleBin(float Lx, float Ly, float binWidth)
 	zero(binavg);
 }
 
-analysis::particleBin::~particleBin(){}
+analysis::Bin1D::~Bin1D(){}
 
-void analysis::particleBin::addToBin(float rx, float val)
+void analysis::Bin1D::addToBin(float rx, float val)
 {
 	if(val == 1.0)
 		bin[int(rx/binWidth)] += 1;
@@ -128,45 +134,108 @@ void analysis::particleBin::addToBin(float rx, float val)
 		bin[int(rx/binWidth)] += val;	
 }
 
-void analysis::particleBin::normalize(float *binTonorm, float norm)
+void analysis::Bin1D::normalize(float *binTonorm, float *normv, float normc)
 {
-	if(norm == 0.0) norm = Ly*binWidth;
+	if(normv != NULL)
+	{
+		for(int i = 0; i < nBins; i++)
+			binTonorm[i] /= normv[i];
+	}
+	else
+	{
+		if(normc == 1.0) normc = Ly*binWidth;
 
-	for(int i = 0; i < nBins; i++)
-		binTonorm[i] /= norm;
+		for(int i = 0; i < nBins; i++)
+			binTonorm[i] /= normc;	
+	}
 }
 
-void analysis::particleBin::zero(float *binTozero)
+void analysis::Bin1D::zero(float *binTozero)
 {
 	for(int i = 0; i < nBins; i++)
 		binTozero[i] = 0.0;
 }
 
-void analysis::particleBin::addBins(float *bin1, float *bin2)
+void analysis::Bin1D::addBins(float *bin1, float *bin2)
 {
 	for(int i = 0; i < nBins; i++)
 		bin1[i] += bin2[i];
 }
 
+/* ----------------- Hist2D members -----------------*/
+
+analysis::Hist2D::Hist2D(float rcut_x, float rcut_y, float binW_x, float binW_y)
+{
+	this -> rcut_x = rcut_x;
+	this -> rcut_y = rcut_y;
+	this -> binW_x = binW_x;
+	this -> binW_y = binW_y;
+
+	nBin_x = 2*int(rcut_x / binW_x);
+	nBin_y = 2*int(rcut_y / binW_y);
+
+	bin = new float*[nBin_x];
+	for(int i = 0; i < nBin_x; i++)
+	{
+		bin[i] = new float[nBin_y];
+
+		for(int j = 0; j < nBin_y; j++)
+			bin[i][j] = 0.0;
+	}
+} 
+
+analysis::Hist2D::~Hist2D(){}
+
+void analysis::Hist2D::addToBin(char iid, char jid, float dxij, float dyij)
+{
+	int bin_xi = int((rcut_x + dxij)/binW_x);
+	int bin_xj = int((rcut_x - dxij)/binW_x);
+	int bin_yi = int((rcut_y + dyij)/binW_y);
+	int bin_yj = int((rcut_y - dyij)/binW_y);
+
+	if(bin_xi == nBin_x) bin_xi--;
+	if(bin_xj == nBin_x) bin_xj--;
+	if(bin_yi == nBin_y) bin_yi--;
+	if(bin_yj == nBin_y) bin_yj--;
+
+	if(iid == jid)
+	{
+		bin[bin_xi][bin_yi] += 1.0;
+		bin[bin_xj][bin_yj] += 1.0;
+	}
+	else
+		bin[bin_xi][bin_yi] += 1.0;	
+}
+
+void analysis::Hist2D::normalize(float fac)
+{
+	for(int i = 0; i < nBin_x; i++)
+	{
+		for(int j = 0; j < nBin_y; j++)
+			bin[i][j] /= (fac * binW_x * binW_y);
+	}
+}
+
 /* ----------------- Trajectory members -----------------*/
 
-analysis::Trajectory::Trajectory(float timeStep)
+analysis::Trajectory::Trajectory(float timeStep, int frameWidth)
 {
 	fpathI = new char [500];
 	fpathO = new char [500];
 	pipeString = new char [500];
 	pipeChar = new char [500];
 	fileI = nullptr;
-	fileO = nullptr;
+	fileO = NULL;
 
 	frame_nr = -1;
 	this->timeStep = timeStep;
+	this->frameWidth = frameWidth;
 	xCom = yCom = zCom = 0.0;
 }
 
 analysis::Trajectory::~Trajectory(){}
 
-void analysis::Trajectory::openTrajectory()
+void analysis::Trajectory::openTrajectory(bool count)
 {
 	fileI = fopen(fpathI, "r");
 	if(fileI == NULL)
@@ -181,12 +250,64 @@ void analysis::Trajectory::openTrajectory()
 		rewind(fileI);
 		printf("\nTrajectory %s file opened and ready to be read...\n", fpathI);
 	}
+
+	if(count == true)
+		countFrames();
 }
 
 void analysis::Trajectory::closeTrajectory()
 {
-	printf("Closing trajectory file.\n");
+	printf("\nClosing trajectory file.\n");
 	fclose(fileI);
+}
+
+void analysis::Trajectory::importTrajectory(atom_style **ATOMS, System *BOX)
+{
+	frame_nr = -1;
+	while( !feof(fileI) )
+	{
+		readThisFrame(ATOMS[frame_nr + 1]);
+
+		if(frame_nr > 0)
+		{
+			for(int i = 0; i < nAtoms; i++)
+			{
+				ATOMS[frame_nr][i].jumpx = ATOMS[frame_nr - 1][i].jumpx;
+				ATOMS[frame_nr][i].jumpy = ATOMS[frame_nr - 1][i].jumpy;
+
+				float dx = ATOMS[frame_nr][i].rxt1 - ATOMS[frame_nr - 1][i].rxt1;
+				float dy = ATOMS[frame_nr][i].ryt1 - ATOMS[frame_nr - 1][i].ryt1;
+
+				if(dx <= -0.5*BOX->Lx) ATOMS[frame_nr][i].jumpx++;
+				else if(dx >= 0.5*BOX->Lx) ATOMS[frame_nr][i].jumpx--;
+
+				if(dy <= -0.5*BOX->Ly) ATOMS[frame_nr][i].jumpy++;
+				else if(dy >= 0.5*BOX->Ly) ATOMS[frame_nr][i].jumpy--;
+			}
+		}
+
+		if(frame_nr == totalFrames - 1) 
+			break;
+	}
+
+	printf("\nCoordinates imported successfully!\n");
+	rewind(fileI);
+}
+
+void analysis::Trajectory::countFrames()
+{
+	atom_style *ATOMS = new atom_style [nAtoms];
+
+	frame_nr = 0;
+	while( !(feof(fileI)) )
+		readThisFrame(ATOMS);
+
+	totalFrames = frame_nr - 1;
+
+	printf("Counting %d frames, %d atoms\n", totalFrames, nAtoms);
+
+	rewind(fileI);
+	delete[] ATOMS;
 }
 
 void analysis::Trajectory::readThisFrame(atom_style *ATOMS)
@@ -194,12 +315,13 @@ void analysis::Trajectory::readThisFrame(atom_style *ATOMS)
 	fgets(pipeString, 500, fileI);
 	
 	fgets(pipeString, 500, fileI);
-	sscanf(pipeString, "%*s %d", &step);
+	// sscanf(pipeString, "%*s %d", &step);
+	sscanf(pipeString, "%*s %*s %ld", &step);
 
 	for(int i = 0; i < nAtoms; i++)
 	{
 		fgets(pipeString, 500, fileI);
-		sscanf(pipeString, "%c %f %f %f %f %f", &ATOMS[i].id, &ATOMS[i].rxt1, &ATOMS[i].ryt1, &ATOMS[i].rzt1, &ATOMS[i].px, &ATOMS[i].py);
+		sscanf(pipeString, "%c %f %f %*f %*f %*f", &ATOMS[i].id, &ATOMS[i].rxt1, &ATOMS[i].ryt1);
 	}
 
 	frame_nr++;
