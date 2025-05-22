@@ -1,4 +1,4 @@
-// corr.cpp
+// computeRDF_2D.cpp
 
 #include "analysis.h"
 

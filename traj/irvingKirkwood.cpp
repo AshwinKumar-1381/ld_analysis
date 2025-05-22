@@ -2,7 +2,7 @@
 
 #include "irvingKirkwood.h"
 
-void insertSnippet1(Trajectory *TRAJ, atom_style *ATOMS, System *BOX, pair_style *INTERACTION, particleBin **Pin, float rxi, float ryi, float rxj, float ryj)
+void insertSnippet1(Trajectory *TRAJ, atom_style *ATOMS, System *BOX, pair_style *INTERACTION, Bin1D **Pin, float rxi, float ryi, float rxj, float ryj)
 {
 	float delxCom = TRAJ->xCom - 0.5*BOX->Lx;
 	float binW = Pin[0]->binWidth;
@@ -83,7 +83,7 @@ void insertSnippet1(Trajectory *TRAJ, atom_style *ATOMS, System *BOX, pair_style
 	}
 }
 
-void analysis::computeInteractionPressure(Trajectory *TRAJ, atom_style *ATOMS, System *BOX, pair_style *INTERACTION, particleBin **Pin)
+void analysis::computeInteractionPressure(Trajectory *TRAJ, atom_style *ATOMS, System *BOX, pair_style *INTERACTION, Bin1D **Pin)
 {
 	BOX->buildCellList(ATOMS); 
 
@@ -155,7 +155,7 @@ void analysis::computeInteractionPressure(Trajectory *TRAJ, atom_style *ATOMS, S
 	}
 }	
 
-void analysis::computeKineticPressure(Trajectory *TRAJ, atom_style *ATOMS, System *BOX, particleBin **Pkin)
+void analysis::computeKineticPressure(Trajectory *TRAJ, atom_style *ATOMS, System *BOX, Bin1D **Pkin)
 {
 	float delxCom = TRAJ->xCom - 0.5*BOX->Lx;
 
@@ -171,7 +171,7 @@ void analysis::computeKineticPressure(Trajectory *TRAJ, atom_style *ATOMS, Syste
 	}
 }
 
-void analysis::computeSwimPressure(Trajectory *TRAJ, atom_style *ATOMS, System *BOX, particleBin *Pswim, float PeA, float PeB)
+void analysis::computeSwimPressure(Trajectory *TRAJ, atom_style *ATOMS, System *BOX, Bin1D *Pswim, float PeA, float PeB)
 {
 	float delxCom = TRAJ->xCom - 0.5*BOX->Lx;
 

@@ -261,12 +261,18 @@ void analysis::Trajectory::closeTrajectory()
 	fclose(fileI);
 }
 
-void analysis::Trajectory::importTrajectory(atom_style **ATOMS, System *BOX)
+void analysis::Trajectory::importTrajectory(atom_style **ATOMS, System *BOX, long startStep, long endStep)
 {
+	long frameStart = long(startStep / TRAJ->frameWidth);
+	long frameEnd = long(endStep / TRAJ->frameWidth);
+
+	atom_style *tempATOMS = new atom_style();
+
 	frame_nr = -1;
 	while( !feof(fileI) )
 	{
-		readThisFrame(ATOMS[frame_nr + 1]);
+		// readThisFrame(ATOMS[frame_nr + 1]);
+		readThisFrame(tempATOMS);
 
 		if(frame_nr > 0)
 		{
@@ -292,6 +298,8 @@ void analysis::Trajectory::importTrajectory(atom_style **ATOMS, System *BOX)
 
 	printf("\nCoordinates imported successfully!\n");
 	rewind(fileI);
+
+	delete[] tempATOMS;
 }
 
 void analysis::Trajectory::countFrames()
@@ -305,6 +313,8 @@ void analysis::Trajectory::countFrames()
 	totalFrames = frame_nr - 1;
 
 	printf("Counting %d frames, %d atoms\n", totalFrames, nAtoms);
+
+	frame_nr = -1;
 
 	rewind(fileI);
 	delete[] ATOMS;

@@ -99,7 +99,7 @@ namespace analysis {
 
 	void openTrajectory(bool count = false);
 	void closeTrajectory();
-	void importTrajectory(atom_style **ATOMS, System *BOX);
+	void importTrajectory(atom_style **ATOMS, System *BOX, long startStep, long endStep);
 	void countFrames();
 	void readThisFrame(atom_style *ATOMS);
 	void readNextFrame(atom_style *ATOMS);
@@ -114,7 +114,8 @@ namespace analysis {
 	void write2file(float *rn, float **RDF, int nRDF, int nBins);
 	void write2file(float ***RDF_x_y, int nRDF, int nBins[], float binW[], char option[]);
 	void write2file(float ***RDFxy, int nRDFtypes, int nBins[]);
-
+	void write2file(float **Sk_x_y, float kx[], float ky[], int Nk[], int tag = 0);
+	void write2file(float **Hist, int nBins[]);
 	};
 }
 

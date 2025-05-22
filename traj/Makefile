@@ -16,11 +16,20 @@ pdf_tavg: pdf_tavg.cpp analysis.cpp
 order: laneOrder.cpp analysis.cpp
 	$(CC) $(CFLAGS) laneOrder.cpp analysis.cpp -o ./bin/order.o
 
-rdf1D: computeRDF_1D.cpp analysis.cpp
-	$(CC) $(CFLAGS) computeRDF_1D.cpp analysis.cpp -o ./bin/rdf1D.o
+rdf: rdf.cpp analysis.cpp
+	$(CC) $(CFLAGS) rdf.cpp analysis.cpp -o ./bin/rdf.o
 
-rdf2D: computeRDF_2Db.cpp analysis.cpp
-	$(CC) $(CFLAGS) computeRDF_2Db.cpp analysis.cpp -o ./bin/rdf2D.o
+rdf1D: rdf1D.cpp analysis.cpp
+	$(CC) $(CFLAGS) rdf1D.cpp analysis.cpp -o ./bin/rdf1D.o
+
+rdf2D: rdf2D.cpp analysis.cpp
+	$(CC) $(CFLAGS) rdf2D.cpp analysis.cpp -o ./bin/rdf2D.o
+
+disp: displacements.cpp analysis.cpp
+	$(CC) $(CFLAGS) displacements.cpp analysis.cpp -o ./bin/disp.o
+
+sk: structure.cpp analysis.cpp
+	$(CC) $(CFLAGS) structure.cpp analysis.cpp -o ./bin/sk.o
 
 clean:
 	rm -f ./bin/*.o

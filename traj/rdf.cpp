@@ -12,22 +12,22 @@ void computeRDF(float **RDF, atom_style *ATOMS, System *BOX, int nRDFtypes, floa
 int main(int argc, char* argv[])
 {
 	// Trajectory params
+	long eq_steps = long(1e7);
+	long startStep = long(8e9), endStep = long(10e9);
 	float dt = 5e-4;
-	long eq_steps = long(0e8);
-	long startStep = long(9e7), endStep = long(1e8);
-	int frameW = int(1e4);
+	int frameW = int(1e5);
 
 	// System params
 	int nAtomTypes = 2;
 	float xA = 0.5, xB = 0.5;
 	float Lx = 150.0, Ly = 30.0, rho = 0.45;
-	float Rcut = 5.0;
-	int Nbins = 100;
+	float Rcut = 10.0;
+	int Nbins = 200;
 
 	// Opening trajectory 
 	Trajectory *TRAJ = new Trajectory(dt, frameW);
-	sprintf(TRAJ->fpathI, "/home/ashwin/Desktop/ashwin_md/ld_analysis/traj/tests/rdf/Data1/traj1.xyz");
-	sprintf(TRAJ->fpathO, "/home/ashwin/Desktop/ashwin_md/ld_analysis/traj/tests/rdf/Data1/bdRDF_cpp.dat");
+	sprintf(TRAJ->fpathI, "//media/ashwin/One Touch/ashwin_md/lane/Apr2025/lmp/Data38/traj2.xyz");
+	sprintf(TRAJ->fpathO, "//media/ashwin/One Touch/ashwin_md/lane/Apr2025/lmp/Data38/laneRDF.dat");
 	TRAJ -> openTrajectory();
 
 	// RDF initialization
@@ -59,6 +59,7 @@ int main(int argc, char* argv[])
 		{
 			ctr++;
 			computeRDF(RDF, ATOMS, BOX, nRDFtypes, Rcut, binW);
+			printf("Processing step %ld, frame %d\n", TRAJ->step - eq_steps, ctr);
 		}
 	}
 

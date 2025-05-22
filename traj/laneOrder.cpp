@@ -8,47 +8,49 @@ float computeLaneOrder(atom_style *ATOMS, System *BOX, float slabW_y);
 
 int main(int argc, char*argv[])
 {
+	char *option = new char[20];
+	sprintf(option, "time_avg");
+
 	// Trajectory params
 	float dt = 5e-4;
-	float eq_time = 1e7*dt; 
-	float timeStart = 0e6, timeEnd = 4e6;
-	int frameW = int(1e5);
+	long eq_steps = long(1e7); 
+	long startStep = long(8e7), endStep = long(1e8);
+	int frameW = int(1e3);
 
 	// System params
 	float Lx = 150.0, Ly = 30.0; 
-
-	// Compute params
 	float slabW = 1.0;
+
+	// Keywords and values for option = time_evolve 
 	int Nfreq = 500; 	
 	int Nsamples = 100; 
 	int Nevery = 1;		
-	char *option = new char[20];
-	sprintf(option, "time_evolve");
 
 	Trajectory *TRAJ = new Trajectory(dt, frameW);
-	sprintf(TRAJ->fpathI, "//media/ashwin/One Touch/ashwin_md/Apr2025/lane/lmp/Data24/traj2.xyz");
-	sprintf(TRAJ->fpathO, "//media/ashwin/One Touch/ashwin_md/Apr2025/lane/lmp/Data24/laneOrder.dat");
+	sprintf(TRAJ->fpathI, "//media/ashwin/One Touch/ashwin_md/lane/Apr2025/lmp/Data51/traj2.xyz");
+	sprintf(TRAJ->fpathO, "//media/ashwin/One Touch/ashwin_md/lane/Apr2025/lmp/Data51/laneOrder.dat");
 
 	TRAJ -> openTrajectory();
 	atom_style *ATOMS = new atom_style[TRAJ->nAtoms];
 	System *BOX = new System(Lx, Ly, TRAJ->nAtoms);
 
-	int frameStart = int(timeStart/(dt * frameW));
-	int frameEnd = int(timeEnd/(dt * frameW)); 
+	int frameStart = int(startStep/frameW);
+	int frameEnd = int(endStep/frameW); 
 
 	if(strcmp(option, "time_evolve") == 0)
 	{
 		TRAJ -> write2file(0.0, 0.0, 1);
 
 		int ctr = 0;
+		float avg = 0.0;
+
 		int nextFrame = frameStart + ctr*Nfreq;
 		int frameStartAvg = nextFrame;
-		float avg = 0.0;
 
 		while( !feof(TRAJ->fileI) )
 		{
 			TRAJ -> readThisFrame(ATOMS);
-			TRAJ->time = TRAJ->step * TRAJ->timeStep - eq_time; 
+			TRAJ->time = (TRAJ->step - eq_steps) * TRAJ->timeStep; 
 
 			if(TRAJ->frame_nr >= frameStart and TRAJ->frame_nr <= frameEnd)
 			{
@@ -86,6 +88,31 @@ int main(int argc, char*argv[])
 
 		TRAJ -> closeTrajectory();
 		TRAJ -> write2file(0.0, 0.0, 0);
+	}
+
+	else if(strcmp(option, "time_avg") == 0)
+	{
+		int ctr = 0;
+		float avg = 0.0;
+
+		while( !feof(TRAJ -> fileI) )
+		{
+			TRAJ -> readThisFrame(ATOMS);
+
+			if(TRAJ->frame_nr >= frameStart and TRAJ->frame_nr <= frameEnd)
+			{
+				avg += computeLaneOrder(ATOMS, BOX, slabW);
+				ctr++;
+			}
+
+			if(TRAJ->frame_nr == frameEnd)
+			{
+				avg /= ctr;
+				break;
+			}
+		}
+
+		printf("Lane order parameter averaged over %d frames = %f\n", ctr, avg);
 	}
 }
 

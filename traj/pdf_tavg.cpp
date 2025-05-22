@@ -6,25 +6,28 @@ using namespace analysis;
 
 int main(int argc, char *argv[])
 {
-	float Lx = 200.0, Ly = 100.0, binWidth = 4.0;
-	float timeStart = 10e3, timeEnd = 15e3;
+	float Lx = 200.0, Ly = 50.0, binWidth = 4.0;
+	long eq_steps = long(1e7);
+	long startStep = long(7e8), endStep = long(10e8); 
+	float dt = 5e-4;
+	int frameW = 100000;
 
-	Trajectory *TRAJ = new Trajectory(5e-4);
-	sprintf(TRAJ -> fpathI, "../../LD/LD-cpp/Data55/traj3.xyz");
-	sprintf(TRAJ -> fpathO, "../../LD/LD-cpp/Data55/pdf_tavg.dat");
+	Trajectory *TRAJ = new Trajectory(dt, frameW);
+	sprintf(TRAJ -> fpathI, "/media/ashwin/One Touch/ashwin_md/biphasic/May2025/lmp/Data12/traj2.xyz");
+	sprintf(TRAJ -> fpathO, "/media/ashwin/One Touch/ashwin_md/biphasic/May2025/lmp/Data12/pdf_tavg.dat");
 	TRAJ -> openTrajectory();
 
 	atom_style *ATOMS = new atom_style [TRAJ->nAtoms];
 
-	particleBin *binA = new particleBin(Lx, Ly, binWidth);
-	particleBin *binB = new particleBin(Lx, Ly, binWidth);
+	Bin1D *binA = new Bin1D(Lx, Ly, binWidth);
+	Bin1D *binB = new Bin1D(Lx, Ly, binWidth);
 
 	int nFrames = 0;
 	while( !feof(TRAJ->fileI) )
 	{
 		TRAJ -> readThisFrame(ATOMS);
 
-		if(TRAJ->step*TRAJ->timeStep >= timeStart and TRAJ->step*TRAJ->timeStep <= timeEnd)
+		if((TRAJ->step >= eq_steps + startStep) and (TRAJ->step <= eq_steps + endStep))
 		{
 			TRAJ -> computeCom(ATOMS);
 			float delxCom = TRAJ -> xCom - 0.5*Lx;
@@ -47,10 +50,10 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	binA -> normalize(binA->binavg, nFrames);
-	binB -> normalize(binB->binavg, nFrames);
+	binA -> normalize(binA->binavg, NULL, nFrames);
+	binB -> normalize(binB->binavg, NULL, nFrames);
 
-	printf("PDF averaged from %d to %d over %d frames.\n", int(timeStart), int(timeEnd), nFrames);
+	printf("PDF averaged from %d to %d over %d frames.\n", int(startStep*dt), int(endStep*dt), nFrames);
 
 	TRAJ -> write2file(binA, binB);
 	TRAJ -> closeTrajectory();
@@ -58,7 +61,7 @@ int main(int argc, char *argv[])
 	return(0);
 }
 
-void analysis::Trajectory::write2file(particleBin *binA, particleBin *binB, int ctr)
+void analysis::Trajectory::write2file(Bin1D *binA, Bin1D *binB, int ctr, float timeToAvg)
 {
 	remove(fpathO);
 

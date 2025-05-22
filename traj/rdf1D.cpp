@@ -16,10 +16,10 @@ void computeRDF_1D(float ***RDF_x_y, atom_style *ATOMS, System *BOX, int nRDFtyp
 int main(int argc, char* argv[])
 {
 	// ---------- Trajectory params ----------
-	long eq_steps = long(1e7);
-	long startStep = long(6e9), endStep = long(8e9);
+	long eq_steps = long(0e7);
+	long startStep = long(8e7), endStep = long(10e7);
 	float dt = 5e-4;
-	int frameW = int(1e5);
+	int frameW = int(1e4);
 
 	// ---------- System params ----------
 	int nAtomTypes = 2;
@@ -27,14 +27,14 @@ int main(int argc, char* argv[])
 	float Lx = 150.0, Ly = 30.0, rho = 0.45;
 
 	// ---------- RDF params ----------
-	float Rcut[2] = {10.0, 5.0};
+	float Rcut[2] = {10.0, 10.0};
 	char option[10] = "asymm";
-	int Nbins[2] = {200, 100};
+	int Nbins[2] = {200, 200};
 
 	// ---------- Opening trajectory ----------
 	Trajectory *TRAJ = new Trajectory(dt, frameW);
-	sprintf(TRAJ->fpathI, "//media/ashwin/One Touch/ashwin_md/Apr2025/lane/lmp/Data27/traj2.xyz");
-	sprintf(TRAJ->fpathO, "//media/ashwin/One Touch/ashwin_md/Apr2025/lane/lmp/Data27/laneRDF_1D_%s.dat", option);
+	sprintf(TRAJ->fpathI, "//media/ashwin/One Touch/ashwin_md/lane/Apr2025/cpp/Data6/traj2.xyz");
+	sprintf(TRAJ->fpathO, "//media/ashwin/One Touch/ashwin_md/lane/Apr2025/cpp/Data6/laneRDF_1D_%s.dat", option);
 	TRAJ -> openTrajectory();
 
 	atom_style *ATOMS = new atom_style[TRAJ->nAtoms];
@@ -137,6 +137,8 @@ void computeRDF_1D(float ***RDF_x_y, atom_style *ATOMS, System *BOX, int nRDFtyp
 
 			if(abs(dxij) < Rcut[0] and abs(dyij) < Rcut[1])
 			{
+
+				// printf("Atom %d(%c) and %d(%c) are separated by dx=%f and dy=%f\n", i, ATOMS[i].id, j, ATOMS[j].id, dxij, dyij);
 				// ---------- Bins symmetric about origin ----------
 				if(strcmp(option, "symm") == 0)
 				{
@@ -196,7 +198,7 @@ void computeRDF_1D(float ***RDF_x_y, atom_style *ATOMS, System *BOX, int nRDFtyp
 				{
 					if(abs(dyij) < binW[1])
 					{
-						int bin_xi = int((dxij + Rcut[0]) / binW[0]);
+						int bin_xi = int(( dxij + Rcut[0]) / binW[0]);
 						int bin_xj = int((-dxij + Rcut[0]) / binW[0]);
 
 						RDFx[0][bin_xi] += 1.0;
@@ -221,15 +223,24 @@ void computeRDF_1D(float ***RDF_x_y, atom_style *ATOMS, System *BOX, int nRDFtyp
 
 							else
 							{
-								RDFx[2][bin_xi] += 1.0;
-								RDFx[3][bin_xj] += 1.0;
+								if(ATOMS[i].id == 'N')
+								{
+									RDFx[2][bin_xi] += 1.0;
+									RDFx[3][bin_xj] += 1.0;	
+								}
+
+								else if(ATOMS[i].id == 'O')
+								{
+									RDFx[3][bin_xi] += 1.0;
+									RDFx[2][bin_xj] += 1.0;
+								}
 							}
 						}
 					}
 
 					if(abs(dxij) < binW[0])
 					{
-						int bin_yi = int((dyij + Rcut[1]) / binW[1]);
+						int bin_yi = int(( dyij + Rcut[1]) / binW[1]);
 						int bin_yj = int((-dyij + Rcut[1]) / binW[1]);
 
 						RDFy[0][bin_yi] += 1.0;
@@ -254,8 +265,17 @@ void computeRDF_1D(float ***RDF_x_y, atom_style *ATOMS, System *BOX, int nRDFtyp
 
 							else
 							{
-								RDFy[2][bin_yi] += 1.0;
-								RDFy[3][bin_yj] += 1.0;
+								if(ATOMS[i].id == 'N')
+								{
+									RDFx[2][bin_yi] += 1.0;
+									RDFx[3][bin_yj] += 1.0;	
+								}
+
+								else if(ATOMS[i].id == 'O')
+								{
+									RDFx[3][bin_yi] += 1.0;
+									RDFx[2][bin_yj] += 1.0;
+								}
 							}
 						}						
 					}

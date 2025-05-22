@@ -18,14 +18,14 @@ int main(int argc, char *argv[])
 	pair_style *INTERACTION = new pair_style(1.0, 1.0, 1.122462048);
 
 	int nProps = 4;
-	particleBin **Pin = new particleBin*[nProps];
-	particleBin **Pkin = new particleBin*[nProps];
-	particleBin *Pswim = new particleBin(Lx, Ly, binWidth);
+	Bin1D **Pin = new Bin1D*[nProps];
+	Bin1D **Pkin = new Bin1D*[nProps];
+	Bin1D *Pswim = new Bin1D(Lx, Ly, binWidth);
 
 	for(int i = 0; i < nProps; i++)
 	{
-		Pin[i] = new particleBin(Lx, Ly, binWidth);
-		Pkin[i] = new particleBin(Lx, Ly, binWidth);
+		Pin[i] = new Bin1D(Lx, Ly, binWidth);
+		Pkin[i] = new Bin1D(Lx, Ly, binWidth);
 	}
 
 	int nFrames = 0;
@@ -45,16 +45,16 @@ int main(int argc, char *argv[])
 
 			for(int i = 0; i < nProps; i++)
 			{
-				Pin[i] -> normalize(Pin[i] -> bin, Ly);
+				Pin[i] -> normalize(Pin[i] -> bin, NULL, Ly);
 				Pin[i] -> addBins(Pin[i] -> binavg, Pin[i] -> bin);
 				Pin[i] -> zero(Pin[i] -> bin);
 
-				Pkin[i] -> normalize(Pkin[i] -> bin);
+				Pkin[i] -> normalize(Pkin[i] -> bin, NULL);
 				Pkin[i] -> addBins(Pkin[i] -> binavg, Pkin[i] -> bin);
 				Pkin[i] -> zero(Pkin[i] -> bin);
 			}
 
-			Pswim -> normalize(Pswim -> bin);
+			Pswim -> normalize(Pswim -> bin, NULL);
 			Pswim -> addBins(Pswim -> binavg, Pswim -> bin);
 			Pswim -> zero(Pswim ->bin);
 		}
@@ -62,10 +62,10 @@ int main(int argc, char *argv[])
 
 	for(int i = 0; i < nProps; i++)
 	{
-		Pin[i] -> normalize(Pin[i] -> binavg, float(nFrames));
-		Pkin[i] -> normalize(Pkin[i] -> binavg, float(nFrames));
+		Pin[i] -> normalize(Pin[i] -> binavg, NULL, float(nFrames));
+		Pkin[i] -> normalize(Pkin[i] -> binavg, NULL, float(nFrames));
 	}
-	Pswim -> normalize(Pswim -> binavg, float(nFrames));
+	Pswim -> normalize(Pswim -> binavg, NULL, float(nFrames));
 
 	printf("PDF averaged from %d to %d over %d frames.\n", int(timeStart), int(timeEnd), nFrames);
 
@@ -73,7 +73,7 @@ int main(int argc, char *argv[])
 	TRAJ -> closeTrajectory();
 }
 
-void analysis::Trajectory::write2file(particleBin **Pin, particleBin **Pkin, particleBin *Pswim, int ctr)
+void analysis::Trajectory::write2file(Bin1D **Pin, Bin1D **Pkin, Bin1D *Pswim, int ctr)
 {
 	remove(fpathO);
 
